@@ -11,7 +11,6 @@ from math_verify import LatexExtractionConfig, parse, verify
 
 from .utils import is_e2b_available
 
-
 if is_e2b_available():
     from dotenv import load_dotenv
     from e2b_code_interpreter import AsyncSandbox
