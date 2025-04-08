@@ -115,7 +115,7 @@ def main(script_args: GRPOScriptArguments, training_args: GRPOConfig, model_args
     set_seed(training_args.seed)
 
     ###############
-    print("Setup logging")
+    print("## Setup logging")
     ###############
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -134,9 +134,9 @@ def main(script_args: GRPOScriptArguments, training_args: GRPOConfig, model_args
         f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
         + f" distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
     )
-    logger.info(f"Model parameters {model_args}")
-    logger.info(f"Script parameters {script_args}")
-    logger.info(f"Training parameters {training_args}")
+    logger.info(f"#### Model parameters\n{model_args}")
+    logger.info(f"#### Script parameters\n{script_args}")
+    logger.info(f"#### Training parameters\n{training_args}")
 
     # Check for last checkpoint
     last_checkpoint = None
@@ -149,14 +149,16 @@ def main(script_args: GRPOScriptArguments, training_args: GRPOConfig, model_args
         init_wandb_training(training_args)
 
     # Load the dataset
+    logger.info("Loading dataset")
     dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
-
+    logger.info(dataset)
     ################
-    # Load tokenizer
+    logger.info("## Load tokenizer")
     ################
     tokenizer = get_tokenizer(model_args, training_args)
 
     # Get reward functions
+    logger.info("## Get reward functions")
     REWARD_FUNCS_REGISTRY = {
         "accuracy": accuracy_reward,
         "format": format_reward,
@@ -180,6 +182,8 @@ def main(script_args: GRPOScriptArguments, training_args: GRPOConfig, model_args
     reward_funcs = [REWARD_FUNCS_REGISTRY[func] for func in script_args.reward_funcs]
 
     # Format into conversation
+    logger.info("## Format into conversation")
+    # Format into conversation
     def make_conversation(example):
         prompt = []
 
@@ -189,13 +193,16 @@ def main(script_args: GRPOScriptArguments, training_args: GRPOConfig, model_args
         prompt.append({"role": "user", "content": example["problem"]})
         return {"prompt": prompt}
 
+    dataset = dataset.rename_columns({"question": "problem", "answer": "solution"})
     dataset = dataset.map(make_conversation)
+
+    logger.info(dataset)
 
     for split in dataset:
         if "messages" in dataset[split].column_names:
             dataset[split] = dataset[split].remove_columns("messages")
 
-    logger.info("*** Initializing model kwargs ***")
+    logger.info("## Initializing model kwargs")
     torch_dtype = (
         model_args.torch_dtype if model_args.torch_dtype in ["auto", None] else getattr(torch, model_args.torch_dtype)
     )
@@ -211,6 +218,7 @@ def main(script_args: GRPOScriptArguments, training_args: GRPOConfig, model_args
     #############################
     # Initialize the GRPO trainer
     #############################
+    logger.info(f"## Initialize the GRPO trainer with model: {model_args.model_name_or_path}")
     trainer = GRPOTrainer(
         model=model_args.model_name_or_path,
         reward_funcs=reward_funcs,
