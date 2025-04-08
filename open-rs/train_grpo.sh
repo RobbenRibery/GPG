@@ -1,0 +1,1 @@
+python src/open_r1/grpo.py --config recipes/grpo.yaml
